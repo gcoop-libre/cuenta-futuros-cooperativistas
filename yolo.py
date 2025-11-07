@@ -154,7 +154,7 @@ class PeopleCounter:
         if countdown_value > 0:
             countdown_text = str(countdown_value)
             font_scale = 15
-            thickness = 25
+            thickness = 18
             color = self.COLOR_ACCENT
             msg = "Preparandose para la foto..."
         else:
@@ -212,10 +212,10 @@ class PeopleCounter:
         
         # Título centrado
         title_text = "Cuenta futuros cooperativistas"
-        (title_w, title_h), _ = cv2.getTextSize(title_text, cv2.FONT_HERSHEY_DUPLEX, 1.2, 3)
+        (title_w, title_h), _ = cv2.getTextSize(title_text, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)
         title_x = (width - title_w) // 2
         cv2.putText(frame, title_text, (title_x, 40),
-            cv2.FONT_HERSHEY_DUPLEX, 1.2, self.COLOR_LIGHT, 3)
+            cv2.FONT_HERSHEY_SIMPLEX, 1.2, self.COLOR_LIGHT, 2)
 
         # Línea decorativa
         cv2.line(frame, (20, 55), (width - 20, 55), self.COLOR_PRIMARY, 2)
