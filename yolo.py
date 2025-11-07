@@ -1,4 +1,5 @@
-# people_counter_improved.py
+# Cuenta Futuros Cooperativistas
+
 import cv2
 import time
 import numpy as np
@@ -18,7 +19,18 @@ class PeopleCounter:
         self.COLOR_ACCENT = (255, 215, 64)       # Amarillo dorado
         self.COLOR_DARK = (30, 30, 30)           # Gris oscuro
         self.COLOR_LIGHT = (240, 240, 240)       # Gris claro
-        
+
+        # Colores oficiales de la bandera del cooperativismo (BGR)
+        self.COOPERATIVE_COLORS = [
+            (0, 0, 255),        # 1. Rojo (#ff0000)
+            (0, 102, 255),      # 2. Naranja (#ff6600)
+            (0, 255, 255),      # 3. Amarillo (#ffff00)
+            (0, 204, 0),        # 4. Verde (#00cc00)
+            (255, 204, 51),     # 5. Celeste (#33ccff)
+            (204, 0, 0),        # 6. Azul oscuro (#0000cc)
+            (153, 0, 102)       # 7. Violeta (#660099)
+        ]
+
         # FPS tracking
         self.fps_history = deque(maxlen=30)
         self.fps_start_time = time.time()
@@ -90,9 +102,8 @@ class PeopleCounter:
         x1, y1, x2, y2 = map(int, box.xyxy[0])
         conf = float(box.conf[0])
         
-        # Color degradado
-        color_intensity = int(conf * 255)
-        box_color = (color_intensity // 2, color_intensity, color_intensity // 2)
+        # Usar colores cooperativos de forma cíclica
+        box_color = self.COOPERATIVE_COLORS[index % len(self.COOPERATIVE_COLORS)]
         
         # Dibuja rectángulo principal con esquinas redondeadas
         self.draw_rounded_rectangle(frame, (x1, y1), (x2, y2), box_color, 3, radius=10)
