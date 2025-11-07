@@ -5,6 +5,7 @@ import time
 import numpy as np
 from ultralytics import YOLO
 from collections import deque
+from screeninfo import get_monitors
 
 
 class PeopleCounter:
@@ -46,6 +47,13 @@ class PeopleCounter:
         self.frozen_frame = None
         self.frozen_count = None  # Guarda el número de personas cuando inicia countdown
         
+        # Detectar resolución del monitor
+        monitor = get_monitors()[0]  # Monitor principal
+        self.screen_width = monitor.width
+        self.screen_height = monitor.height
+
+        print(f"Resolucion del monitor detectada: {self.screen_width}x{self.screen_height}")
+
         # Configuración de ventana
         self.window_name = "Contador de cooperativistas"
         
@@ -399,8 +407,8 @@ class PeopleCounter:
             print("Error: no se pudo abrir la camara.")
             return
         
-        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(self.window_name, 1280, 720)
+        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
+        cv2.resizeWindow(self.window_name, self.screen_width, self.screen_height)
         
         print("Sistema iniciado. Presiona 'Q' o 'ESC' para salir.")
         
@@ -410,7 +418,7 @@ class PeopleCounter:
                 break
             
             # Redimensionar frame
-            frame = cv2.resize(frame, (1280, 720))
+            frame = cv2.resize(frame, (self.screen_width, self.screen_height))
             
             # Inferencia YOLO
             results = self.model(frame, conf=0.5, verbose=False)[0]
