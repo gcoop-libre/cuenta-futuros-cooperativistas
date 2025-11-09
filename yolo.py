@@ -40,6 +40,10 @@ class PeopleCounter:
         self.frozen_frame = None
         self.frozen_count = None  # Guarda el número de personas cuando inicia countdown
         
+        self.splash_time = None
+        self.splash_duration = 10
+        self.show_initial_splash = True
+
         # Configuración de ventana
         self.window_name = "Contador de cooperativistas"
         
@@ -104,6 +108,80 @@ class PeopleCounter:
             y1, y2 = y_offset, y_offset + self.logo.shape[0]
             x1, x2 = x_offset, x_offset + self.logo.shape[1]
             frame[y1:y2, x1:x2] = self.logo[:, :, :3]
+
+    def draw_splash_screen(self, frame):
+        """Dibuja pantalla de presentación con logo y nombre del programa"""
+        height, width = frame.shape[:2]
+
+        # Fondo oscuro
+        frame[:] = self.COLOR_DARK
+
+        # Dibujar logo grande en el centro
+        if self.logo is not None:
+            # Logo más grande para la pantalla de presentación
+            logo_display_width = 400
+            aspect_ratio = self.logo.shape[0] / self.logo.shape[1]
+            logo_display_height = int(logo_display_width * aspect_ratio)
+
+            # Redimensionar logo
+            logo_large = cv2.resize(self.logo, (logo_display_width, logo_display_height))
+
+            # Posición centrada
+            logo_y = (height - logo_display_height) // 2 - 100
+            logo_x = (width - logo_display_width) // 2
+
+            # Dibujar logo
+            if logo_large.shape[2] == 4:
+                # Con transparencia
+                alpha = logo_large[:, :, 3] / 255.0
+                y1, y2 = logo_y, logo_y + logo_display_height
+                x1, x2 = logo_x, logo_x + logo_display_width
+
+                if y1 >= 0 and x1 >= 0 and y2 <= height and x2 <= width:
+                    for c in range(3):
+                        frame[y1:y2, x1:x2, c] = (
+                            alpha * logo_large[:, :, c] +
+                            (1 - alpha) * frame[y1:y2, x1:x2, c]
+                        )
+            else:
+                # Sin transparencia
+                y1, y2 = logo_y, logo_y + logo_display_height
+                x1, x2 = logo_x, logo_x + logo_display_width
+
+                if y1 >= 0 and x1 >= 0 and y2 <= height and x2 <= width:
+                    frame[y1:y2, x1:x2] = logo_large[:, :, :3]
+
+        # Título del programa
+        title = "CONTADOR DE COOPERATIVISTAS"
+        (title_w, title_h), _ = cv2.getTextSize(title, cv2.FONT_HERSHEY_SIMPLEX, 2.0, 4)
+        title_x = (width - title_w) // 2
+        title_y = height // 2 + 150
+
+        # Sombra del título
+        cv2.putText(frame, title, (title_x + 3, title_y + 3),
+                    cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 0), 6)
+
+        # Título principal
+        cv2.putText(frame, title, (title_x, title_y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 2.0, self.COLOR_PRIMARY, 4)
+
+        # Subtítulo
+        subtitle = "Las cooperativas construyen un mundo mejor"
+        (sub_w, sub_h), _ = cv2.getTextSize(subtitle, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
+        sub_x = (width - sub_w) // 2
+        sub_y = title_y + 60
+
+        cv2.putText(frame, subtitle, (sub_x, sub_y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, self.COLOR_LIGHT, 2)
+
+        # Mensaje de espera
+        wait_msg = "Preparando ..."
+        (wait_w, wait_h), _ = cv2.getTextSize(wait_msg, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
+        wait_x = (width - wait_w) // 2
+        wait_y = height - 100
+
+        cv2.putText(frame, wait_msg, (wait_x, wait_y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, self.COLOR_ACCENT, 2)
 
     def draw_rounded_rectangle(self, img, pt1, pt2, color, thickness, radius=15):
         """Dibuja un rectángulo con esquinas redondeadas"""
@@ -450,7 +528,11 @@ class PeopleCounter:
         cv2.resizeWindow(self.window_name, 1280, 720)
         
         print("Sistema iniciado. Presiona 'Q' o 'ESC' para salir.")
-        
+        # Mostrar pantalla de presentación al inicio
+        if self.show_initial_splash:
+            self.splash_time = time.time()
+            print("Mostrando pantalla de presentacion inicial...")
+
         while True:
             ret, frame = self.cap.read()
             if not ret:
@@ -466,6 +548,24 @@ class PeopleCounter:
             persons = results.boxes[results.boxes.cls == 0]
             person_count = len(persons)
             
+            # MOSTRAR SPLASH INICIAL SI CORRESPONDE
+            if self.show_initial_splash and self.splash_time is not None:
+                if (time.time() - self.splash_time) < self.splash_duration:
+                    splash_frame = frame.copy()
+                    self.draw_splash_screen(splash_frame)
+                    cv2.imshow(self.window_name, splash_frame)
+
+                    # Salir con 'q' o ESC
+                    key = cv2.waitKey(1) & 0xFF
+                    if key in {ord('q'), ord('Q'), 27}:
+                        break
+                    continue  # Saltar el resto del loop
+                else:
+                    # Terminar el splash inicial
+                    self.show_initial_splash = False
+                    self.splash_time = None
+                    print("Iniciando modo de deteccion...")
+
             # Dibuja cajas de personas
             for idx, box in enumerate(persons):
                 self.draw_person_box(frame, box, idx)
@@ -517,15 +617,27 @@ class PeopleCounter:
                 # Mostrar la fotografía congelada
                 cv2.imshow(self.window_name, self.frozen_frame)
             elif self.frozen_frame is not None:
-                # Después de 15 segundos, resetear todo
-                print("Reseteando contador...")
-                self.frozen_frame = None
-                self.success_time = None
-                self.countdown_start_time = None
-                self.frozen_count = None  # RESETEAR el contador congelado
-                self.current_count = 0
-                self.target_count = 0
-                cv2.imshow(self.window_name, frame)
+                # Después de 15 segundos, mostrar pantalla de presentación
+                if self.splash_time is None:
+                    print("Mostrando pantalla de presentacion...")
+                    self.splash_time = time.time()
+
+                # Mostrar splash screen durante splash_duration segundos
+                if (time.time() - self.splash_time) < self.splash_duration:
+                    splash_frame = frame.copy()
+                    self.draw_splash_screen(splash_frame)
+                    cv2.imshow(self.window_name, splash_frame)
+                else:
+                    # Después del splash, resetear todo
+                    print("Reseteando contador...")
+                    self.frozen_frame = None
+                    self.success_time = None
+                    self.countdown_start_time = None
+                    self.frozen_count = None
+                    self.splash_time = None
+                    self.current_count = 0
+                    self.target_count = 0
+                    cv2.imshow(self.window_name, frame)
             else:
                 # Mostrar video en vivo normal
                 cv2.imshow(self.window_name, frame)
