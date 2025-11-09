@@ -11,6 +11,12 @@ class PeopleCounter:
         self.model = YOLO("yolov8s.pt")
         self.cap = cv2.VideoCapture(0)
         
+        # Logo
+        self.logo = None
+        self.logo_path = "./logo-horizonta.png"  # Cambia esto por la ruta de tu imagen
+        self.logo_width = 200  # Ancho del logo en píxeles
+        self.load_logo()
+
         # Colores modernos (BGR)
         self.COLOR_PRIMARY = (255, 107, 53)      # Naranja moderno
         self.COLOR_SUCCESS = (98, 196, 98)       # Verde suave
@@ -51,6 +57,54 @@ class PeopleCounter:
         
         return overlay
     
+    def load_logo(self):
+        """Carga y redimensiona el logo"""
+        try:
+            logo_img = cv2.imread(self.logo_path, cv2.IMREAD_UNCHANGED)
+            if logo_img is not None:
+                # Calcular altura manteniendo proporción
+                aspect_ratio = logo_img.shape[0] / logo_img.shape[1]
+                logo_height = int(self.logo_width * aspect_ratio)
+
+                # Redimensionar
+                self.logo = cv2.resize(logo_img, (self.logo_width, logo_height))
+                print(f"Logo cargado: {self.logo_path} ({self.logo_width}x{logo_height})")
+            else:
+                print(f"Advertencia: No se pudo cargar el logo desde {self.logo_path}")
+        except Exception as e:
+            print(f"Error al cargar logo: {e}")
+
+    def draw_logo(self, frame):
+        """Dibuja el logo en la esquina superior derecha"""
+        if self.logo is None:
+            return
+
+        # Posición: esquina superior derecha con padding
+        padding = 20
+        y_offset = padding
+        x_offset = frame.shape[1] - self.logo.shape[1] - padding
+
+        # Si el logo tiene canal alpha (transparencia)
+        if self.logo.shape[2] == 4:
+            # Extraer el canal alpha
+            alpha = self.logo[:, :, 3] / 255.0
+
+            # Región donde se va a poner el logo
+            y1, y2 = y_offset, y_offset + self.logo.shape[0]
+            x1, x2 = x_offset, x_offset + self.logo.shape[1]
+
+            # Mezclar con transparencia
+            for c in range(3):
+                frame[y1:y2, x1:x2, c] = (
+                    alpha * self.logo[:, :, c] +
+                    (1 - alpha) * frame[y1:y2, x1:x2, c]
+                )
+        else:
+            # Sin transparencia, pegar directo
+            y1, y2 = y_offset, y_offset + self.logo.shape[0]
+            x1, x2 = x_offset, x_offset + self.logo.shape[1]
+            frame[y1:y2, x1:x2] = self.logo[:, :, :3]
+
     def draw_rounded_rectangle(self, img, pt1, pt2, color, thickness, radius=15):
         """Dibuja un rectángulo con esquinas redondeadas"""
         x1, y1 = pt1
@@ -200,36 +254,40 @@ class PeopleCounter:
             
             cv2.putText(frame, msg, (msg_x, msg_y),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.5, self.COLOR_LIGHT, 3)
-    
+
     def draw_header(self, frame, person_count, fps):
         """Dibuja header"""
         height, width = frame.shape[:2]
-        
+
         # Fondo del header con transparencia
         overlay = frame.copy()
         cv2.rectangle(overlay, (0, 0), (width, 100), self.COLOR_DARK, -1)
         cv2.addWeighted(overlay, 0.85, frame, 0.15, 0, frame)
-        
+
+        # Espacio reservado para logo
+        logo_space = 250
+
         # Título centrado
         title_text = "Cuenta futuros cooperativistas"
         (title_w, title_h), _ = cv2.getTextSize(title_text, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 3)
-        title_x = (width - title_w) // 2
+        available_width = width - 2 * logo_space
+        title_x = logo_space + (available_width - title_w) // 2
         cv2.putText(frame, title_text, (title_x, 40),
             cv2.FONT_HERSHEY_SIMPLEX, 1.2, self.COLOR_LIGHT, 2)
 
         # Línea decorativa
-        cv2.line(frame, (20, 55), (width - 20, 55), self.COLOR_PRIMARY, 2)
-        
+        cv2.line(frame, (logo_space, 55), (width - logo_space, 55), self.COLOR_PRIMARY, 2)
+
         # Indicador de estado
         status_text = "SISTEMA ACTIVO"
-        cv2.circle(frame, (30, 75), 8, self.COLOR_SUCCESS, -1)
-        cv2.putText(frame, status_text, (45, 82),
+        cv2.circle(frame, (logo_space + 10, 75), 8, self.COLOR_SUCCESS, -1)
+        cv2.putText(frame, status_text, (logo_space + 25, 82),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.COLOR_LIGHT, 1)
-        
+
         # FPS en el header
         fps_text = f"FPS: {fps:.1f}"
         (fps_w, _), _ = cv2.getTextSize(fps_text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-        cv2.putText(frame, fps_text, (width - fps_w - 30, 82),
+        cv2.putText(frame, fps_text, (width - logo_space - fps_w - 10, 82),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.COLOR_ACCENT, 1)
     
     def draw_counter_panel(self, frame, person_count, is_success_mode):
@@ -428,6 +486,7 @@ class PeopleCounter:
             
             # SIEMPRE dibuja la interfaz base
             self.draw_header(frame, person_count, avg_fps)
+            self.draw_logo(frame)
             self.draw_counter_panel(frame, person_count, is_success_mode)
             self.draw_cooperative_status(frame, person_count, force_success=is_success_mode)
             
