@@ -446,7 +446,7 @@ class PeopleCounter:
             print("Error: no se pudo abrir la camara.")
             return
         
-        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
+        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL | cv2.WINDOW_GUI_NORMAL)
         cv2.resizeWindow(self.window_name, 1280, 720)
         
         print("Sistema iniciado. Presiona 'Q' o 'ESC' para salir.")
