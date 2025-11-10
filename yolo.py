@@ -9,11 +9,12 @@ from collections import deque
 class PeopleCounter:
     def __init__(self):
         self.model = YOLO("yolov8s.pt")
+        self.pose_model = YOLO("yolov8s-pose.pt")  # Modelo para detectar poses
         self.cap = cv2.VideoCapture(0)
         
         # Logo
         self.logo = None
-        self.logo_path = "./logo-horizonta.png"  # Cambia esto por la ruta de tu imagen
+        self.logo_path = "./logo-horizonta.png"
         self.logo_width = 200  # Ancho del logo en píxeles
         self.load_logo()
 
@@ -40,6 +41,11 @@ class PeopleCounter:
         self.frozen_frame = None
         self.frozen_count = None  # Guarda el número de personas cuando inicia countdown
         
+        # Estado de detección de manos
+        self.waiting_for_hands = False
+        self.hands_raised_count = 0
+        self.hands_detection_start = None
+
         self.splash_time = None
         self.splash_duration = 10
         self.show_initial_splash = True
@@ -108,6 +114,92 @@ class PeopleCounter:
             y1, y2 = y_offset, y_offset + self.logo.shape[0]
             x1, x2 = x_offset, x_offset + self.logo.shape[1]
             frame[y1:y2, x1:x2] = self.logo[:, :, :3]
+
+    def detect_raised_hands_yolo(self, frame):
+        """Detecta cuántas manos están levantadas usando YOLO-Pose"""
+        # Inferencia de poses
+        results = self.pose_model(frame, conf=0.5, verbose=False)[0]
+
+        raised_hands = 0
+
+        if results.keypoints is not None and len(results.keypoints.data) > 0:
+            for person_keypoints in results.keypoints.data:
+                # Keypoints importantes (en formato COCO):
+                # 5: hombro izquierdo, 6: hombro derecho
+                # 9: muñeca izquierda, 10: muñeca derecha
+                # 0: nariz (para referencia de altura)
+
+                left_shoulder = person_keypoints[5]
+                right_shoulder = person_keypoints[6]
+                left_wrist = person_keypoints[9]
+                right_wrist = person_keypoints[10]
+
+                # Verificar si los keypoints tienen suficiente confianza (> 0.5)
+                # Mano izquierda levantada: muñeca por encima del hombro
+                if (left_wrist[2] > 0.5 and left_shoulder[2] > 0.5 and 
+                    left_wrist[1] < left_shoulder[1]):
+                    raised_hands += 1
+                    # Dibujar círculo en la muñeca
+                    cv2.circle(frame, (int(left_wrist[0]), int(left_wrist[1])), 
+                              15, (0, 255, 0), -1)
+                    # Línea desde hombro a muñeca
+                    cv2.line(frame, (int(left_shoulder[0]), int(left_shoulder[1])),
+                            (int(left_wrist[0]), int(left_wrist[1])),
+                            (0, 255, 0), 3)
+
+                # Mano derecha levantada: muñeca por encima del hombro
+                if (right_wrist[2] > 0.5 and right_shoulder[2] > 0.5 and
+                    right_wrist[1] < right_shoulder[1]):
+                    raised_hands += 1
+                    # Dibujar círculo en la muñeca
+                    cv2.circle(frame, (int(right_wrist[0]), int(right_wrist[1])),
+                              15, (0, 255, 0), -1)
+                    # Línea desde hombro a muñeca
+                    cv2.line(frame, (int(right_shoulder[0]), int(right_shoulder[1])),
+                            (int(right_wrist[0]), int(right_wrist[1])),
+                            (0, 255, 0), 3)
+
+        return raised_hands
+
+    def draw_hand_detection_message(self, frame, hands_detected, hands_needed):
+        """Dibuja mensaje pidiendo que levanten las manos"""
+        height, width = frame.shape[:2]
+
+        # Fondo semi-transparente
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (0, 0), (width, height), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
+
+        # Mensaje principal
+        message1 = "QUIEREN FORMAR UNA COOPERATIVA?"
+        message2 = "LEVANTEN LA MANO!"
+
+        (text1_w, text1_h), _ = cv2.getTextSize(message1, cv2.FONT_HERSHEY_SIMPLEX, 2, 4)
+        (text2_w, text2_h), _ = cv2.getTextSize(message2, cv2.FONT_HERSHEY_SIMPLEX, 3, 6)
+
+        text1_x = (width - text1_w) // 2
+        text2_x = (width - text2_w) // 2
+        center_y = height // 2
+
+        # Sombra
+        cv2.putText(frame, message1, (text1_x + 3, center_y - 60 + 3),
+                    cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 6)
+        cv2.putText(frame, message2, (text2_x + 3, center_y + 60 + 3),
+                    cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 8)
+
+        # Texto principal
+        cv2.putText(frame, message1, (text1_x, center_y - 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 2, self.COLOR_ACCENT, 4)
+        cv2.putText(frame, message2, (text2_x, center_y + 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 3, self.COLOR_SUCCESS, 6)
+
+        # Contador de manos detectadas
+        counter_text = f"Manos detectadas: {hands_detected}/{hands_needed}"
+        (counter_w, counter_h), _ = cv2.getTextSize(counter_text, cv2.FONT_HERSHEY_SIMPLEX, 1.5, 3)
+        counter_x = (width - counter_w) // 2
+
+        cv2.putText(frame, counter_text, (counter_x, center_y + 150),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.5, self.COLOR_LIGHT, 3)
 
     def draw_splash_screen(self, frame):
         """Dibuja pantalla de presentación con logo y nombre del programa"""
@@ -583,19 +675,42 @@ class PeopleCounter:
             
             # Determinar si estamos en modo éxito
             is_success_mode = (self.countdown_start_time is not None) or (self.frozen_frame is not None)
-            
+
             # SIEMPRE dibuja la interfaz base
             self.draw_header(frame, person_count, avg_fps)
             self.draw_logo(frame)
             self.draw_counter_panel(frame, person_count, is_success_mode)
             self.draw_cooperative_status(frame, person_count, force_success=is_success_mode)
-            
-            # INICIAR COUNTDOWN CUANDO LLEGA A 6
-            if person_count >= 6 and self.countdown_start_time is None and self.frozen_frame is None:
-                self.countdown_start_time = time.time()
-                self.frozen_count = person_count  # GUARDAR el número actual de personas
-                print(f"Iniciando cuenta regresiva: 5... 4... 3... 2... 1... ({self.frozen_count} personas detectadas)")
-            
+
+            # INICIAR DETECCIÓN DE MANOS CUANDO LLEGA A 6
+            if person_count >= 6 and not self.waiting_for_hands and self.countdown_start_time is None and self.frozen_frame is None:
+                self.waiting_for_hands = True
+                self.hands_detection_start = time.time()
+                self.frozen_count = person_count
+                print(f"Esperando manos levantadas... ({self.frozen_count} personas detectadas)")
+
+            # DETECTAR MANOS LEVANTADAS
+            if self.waiting_for_hands and self.countdown_start_time is None and self.frozen_frame is None:
+                # Detectar manos con YOLO-Pose
+                self.hands_raised_count = self.detect_raised_hands_yolo(frame)
+
+                # Dibujar mensaje pidiendo manos
+                self.draw_hand_detection_message(frame, self.hands_raised_count, self.frozen_count)
+                cv2.imshow(self.window_name, frame)
+
+                # Si detecta suficientes manos O pasan 10 segundos, iniciar countdown
+                elapsed_waiting = time.time() - self.hands_detection_start
+                if self.hands_raised_count >= self.frozen_count or elapsed_waiting > 10:
+                    self.waiting_for_hands = False
+                    self.countdown_start_time = time.time()
+                    print(f"Manos detectadas! Iniciando countdown... ({self.hands_raised_count} manos)")
+
+                # Salir con 'q' o ESC
+                key = cv2.waitKey(1) & 0xFF
+                if key in {ord('q'), ord('Q'), 27}:
+                    break
+                continue  # Saltar el resto del loop mientras espera manos
+
             # MOSTRAR COUNTDOWN Y CAPTURAR FRAME
             if self.countdown_start_time is not None and self.frozen_frame is None:
                 elapsed_countdown = time.time() - self.countdown_start_time
@@ -637,6 +752,8 @@ class PeopleCounter:
                     self.splash_time = None
                     self.current_count = 0
                     self.target_count = 0
+                    self.waiting_for_hands = False  # RESETEAR estado de manos
+                    self.hands_raised_count = 0     # RESETEAR contador de manos
                     cv2.imshow(self.window_name, frame)
             else:
                 # Mostrar video en vivo normal
