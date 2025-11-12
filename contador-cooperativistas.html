@@ -109,7 +109,7 @@
         }
 
         .sticker3 {
-            bottom: 80px;
+            bottom: 40px;
             left: 80px;
             max-width: 400px;
             transform: rotate(-8deg);
@@ -118,7 +118,6 @@
         .instrucciones-imagen {
             max-width: 1000px;
             padding: 20px;
-            
         }
 
         /* Video Container */
@@ -136,6 +135,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            transform: scaleX(-1);
         }
 
         #canvas {
@@ -145,6 +145,7 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+            transform: scaleX(-1);
         }
 
         /* Header */
@@ -661,35 +662,48 @@
         function drawPersonBox(person, index) {
             const [x, y, width, height] = person.bbox;
             const color = COOP_COLORS[index % COOP_COLORS.length];
-            
+        
             ctx.strokeStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
             ctx.lineWidth = 3;
             ctx.strokeRect(x, y, width, height);
-
+        
             // Label
             const label = `Cooperativista #${index + 1}`;
+            const labelWidth = ctx.measureText(label).width + 20;
+        
             ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-            ctx.fillRect(x, y - 30, ctx.measureText(label).width + 20, 30);
-            
+            ctx.fillRect(x, y - 30, labelWidth, 30);
+        
+            // 🔁 Guardamos el estado antes de "desespejar" el texto
+            ctx.save(); 
+            ctx.scale(-1, 1); // invertir de nuevo
             ctx.fillStyle = 'white';
-            ctx.font = '14px Arial';
-            ctx.fillText(label, x + 10, y - 10);
-
+            ctx.font = '12px Arial';
+        
+            // como está invertido, hay que ajustar la posición (usamos el ancho total del canvas)
+            ctx.fillText(label, -(x + 10 + labelWidth - 20), y - 10);
+            ctx.restore(); // volvemos al estado original
+        
             // Confidence
             const conf = Math.round(person.score * 100) + '%';
             ctx.fillStyle = 'rgba(30, 30, 30, 0.8)';
             ctx.beginPath();
             ctx.arc(x + width - 30, y + 30, 25, 0, 2 * Math.PI);
             ctx.fill();
-            
+        
             ctx.strokeStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
             ctx.lineWidth = 2;
             ctx.stroke();
-            
+        
+            // 🔁 También corregimos el texto del porcentaje
+            ctx.save();
+            ctx.scale(-1, 1);
             ctx.fillStyle = 'white';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText(conf, x + width - 30, y + 35);
+            ctx.fillText(conf, -(x + width - 30), y + 35);
+            ctx.restore();
+        
             ctx.textAlign = 'left';
         }
 
