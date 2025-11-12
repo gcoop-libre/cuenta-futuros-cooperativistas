@@ -97,22 +97,28 @@
         .sticker1 {
             top: 80px;
             left: 100px;
-            max-width: 120px;
+            max-width: 220px;
             transform: rotate(-12deg);
         }
 
         .sticker2 {
             top: 45%;
             right: 120px;
-            max-width: 110px;
+            max-width:200px;
             transform: rotate(15deg);
         }
 
         .sticker3 {
-            bottom: 120px;
+            bottom: 80px;
             left: 80px;
-            max-width: 130px;
+            max-width: 400px;
             transform: rotate(-8deg);
+        }
+
+        .instrucciones-imagen {
+            max-width: 1000px;
+            padding: 20px;
+            
         }
 
         /* Video Container */
@@ -295,11 +301,12 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.3);
             display: none;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;;
             flex-direction: column;
+            padding-top: 150px;
             z-index: 200;
         }
 
@@ -436,8 +443,13 @@
         <img src="corazon_colores.png" class="sticker sticker2" alt="Sticker 2">
         <img src="cooperar.png" class="sticker sticker3" alt="Sticker 3">
         
+        
         <h1 id="splash-title">CONTADOR DE COOPERATIVISTAS</h1>
+        
+        <img src="instrucciones.png" class="instrucciones-imagen" alt="instrucciones">
+        
         <p id="splash-subtitle">Las cooperativas construyen un mundo mejor</p>
+        
         <p id="splash-loading">Preparando... <span class="spinner" style="display: inline-block; width: 20px; height: 20px; margin-left: 10px;"></span></p>
     </div>
 
@@ -660,7 +672,7 @@
             ctx.fillRect(x, y - 30, ctx.measureText(label).width + 20, 30);
             
             ctx.fillStyle = 'white';
-            ctx.font = '16px Arial';
+            ctx.font = '14px Arial';
             ctx.fillText(label, x + 10, y - 10);
 
             // Confidence
@@ -746,12 +758,12 @@
             if (waitingForHands) {
                 document.getElementById('hand-overlay').classList.add('active');
                 document.getElementById('hands-count').textContent = handsRaisedCount;
-                document.getElementById('hands-needed').textContent = frozenCount;
+                document.getElementById('hands-needed').textContent = 6;
 
                 const elapsed = (Date.now() - handsDetectionStart) / 1000;
                 
                 // TODAS las personas deben tener manos levantadas (una mano por persona)
-                if (handsRaisedCount >= frozenCount) {
+                if (handsRaisedCount >= 1) {
                     console.log(`✅ Todas las personas levantaron la mano! (${handsRaisedCount}/${frozenCount})`);
                     waitingForHands = false;
                     document.getElementById('hand-overlay').classList.remove('active');
@@ -845,7 +857,7 @@
                     document.getElementById('splash-screen').classList.add('hidden');
                     resetSystem();
                 }, 10000);
-            }, 15000);
+            }, 10000);
         }
 
         function resetSystem() {
@@ -900,7 +912,7 @@
             } else {
                 statusPanel.classList.remove('success');
                 const faltantes = 6 - peopleCount;
-                statusMessage.textContent = `Les faltan ${faltantes} cooperativista${faltantes > 1 ? 's' : ''} para formar la cooperativa`;
+                statusMessage.textContent = `Faltan ${faltantes} cooperativista${faltantes > 1 ? 's' : ''} para formar la cooperativa`;
                 
                 progressBar.style.display = 'block';
                 const progress = (peopleCount / 6) * 100;
