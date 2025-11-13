@@ -1,16 +1,21 @@
-# 1. En tu terminal
+Cambiar los script para correr versión descargada de internet o local según necesidades
 
-```bash
-python -m venv venv          # Crea el env
-source venv/bin/activate     # Linux/Mac
-# venv\Scripts\activate      # en Windows
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
 
-pip install torch torchvision torchaudio  # CUDA o CPU según tu tarjeta
-pip install opencv-python
-pip install ultralytics==8.0.0  # YOLOv8 incluye YOLOv5, pero se puede usar solo v5
-```
+Por
 
-# 2. En la notebook
-
-Se deshabilitó la webcam interna como regla udev en
-/etc/udev/rules.d/40-disable-internal-webcam.rules
+    <script src="tf.min.js"></script>
+    <script src="coco-ssd.min.js"></script>
+    
+Y
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+ 
+ Por
+    <script src="camera_utils.js" ></script>
+    <script src="control_utils.js"></script>
+    <script src="drawing_utils.js" ></script>
+    <script src="hands.js"></script>
