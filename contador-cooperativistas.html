@@ -82,6 +82,23 @@
             color: #FFD740;
         }
 
+        /* QR Code */
+        .splash-qr {
+            position: absolute;
+            bottom: 60px;
+            right: 60px;
+            max-width: 300px;
+            padding: 10px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease;
+        }
+        
+        .splash-qr:hover {
+            transform: scale(1.1);
+        }
+
         /* Stickers */
         .sticker {
             position: absolute;
@@ -102,7 +119,7 @@
         }
 
         .sticker2 {
-            top: 45%;
+            top: 25%;
             right: 120px;
             max-width:200px;
             transform: rotate(15deg);
@@ -112,6 +129,13 @@
             bottom: 40px;
             left: 80px;
             max-width: 400px;
+            transform: rotate(-8deg);
+        }
+
+        .sticker4 {
+            top: 20px;
+            right: 80px;
+            max-width: 1000px;
             transform: rotate(-8deg);
         }
 
@@ -503,6 +527,7 @@
         <img src="vos_tan_cripto.png" class="sticker sticker1" alt="Sticker 1">
         <img src="corazon_colores.png" class="sticker sticker2" alt="Sticker 2">
         <img src="cooperar.png" class="sticker sticker3" alt="Sticker 3">
+        <img src="qr-code.png" class="splash-qr" alt="QR Code">
         
         
         <h1 id="splash-title">CONTADOR DE COOPERATIVISTAS</h1>
@@ -909,6 +934,10 @@
             const tempCtx = tempCanvas.getContext('2d');
             tempCanvas.width = canvas.width;
             tempCanvas.height = canvas.height;
+
+            // Invertir horizontalmente para que no se vea espejo
+            tempCtx.translate(canvas.width, 0);
+            tempCtx.scale(-1, 1);
         
             // Dibujar el video y overlays
             tempCtx.drawImage(video, 0, 0);
@@ -917,13 +946,6 @@
             // Crear foto y mostrarla
             tempCanvas.toBlob((blob) => {
                 const url = URL.createObjectURL(blob);
-                // const timestamp = Date.now();
-                    
-                // // 💾 Descargar automáticamente la foto
-                // const downloadLink = document.createElement('a');
-                // downloadLink.href = url;
-                // downloadLink.download = `cooperativa_${timestamp}.jpg`;
-                // downloadLink.click();
 
                 // Agregar miniatura a la barra
                 const strip = document.getElementById('photo-strip');
@@ -932,8 +954,9 @@
                 thumb.title = `Foto ${new Date().toLocaleTimeString()}`;
                 strip.appendChild(thumb);
 
-                // Mantener un máximo de 10 fotos visibles
-                if (strip.children.length > 10) {
+                // Mantener EXACTAMENTE las últimas 10 fotos
+                while (strip.children.length > 10) {
+                    URL.revokeObjectURL(strip.firstChild.src); // Liberar memoria
                     strip.removeChild(strip.firstChild);
                 }
                 
@@ -971,7 +994,12 @@
                 fullscreenPhoto.style.justifyContent = 'center';
                 fullscreenPhoto.style.alignItems = 'center';
                 fullscreenPhoto.style.zIndex = '9999';
-                fullscreenPhoto.innerHTML = `<img src="${url}" style="max-width:95%;max-height:95%;border:5px solid white;border-radius:15px;box-shadow: 0 0 50px rgba(255,255,255,0.3);">`;
+                fullscreenPhoto.innerHTML = `
+                    <div style="position: relative; max-width: 98%; max-height: 98%; display: flex; justify-content: center; align-items: center;">
+                        <img src="${url}" style="width: 100%; height: auto; border: 5px solid white; border-radius: 15px; box-shadow: 0 0 50px rgba(255,255,255,0.3);">
+                        <img src="somos_coop.png" style="position: absolute; top: 20px; right: 20px; max-width: 150px; filter: drop-shadow(3px 3px 6px rgba(0,0,0,0.5)); transform: rotate(10deg);">
+                    </div>
+                `;
                 document.body.appendChild(fullscreenPhoto);
             
                 // Ocultar foto después de 10 segundos y mostrar splash
