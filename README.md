@@ -9,3 +9,8 @@ pip install torch torchvision torchaudio  # CUDA o CPU según tu tarjeta
 pip install opencv-python
 pip install ultralytics==8.0.0  # YOLOv8 incluye YOLOv5, pero se puede usar solo v5
 ```
+
+# 2. En la notebook
+
+Se deshabilitó la webcam interna como regla udev en
+/etc/udev/rules.d/40-disable-internal-webcam.rules
